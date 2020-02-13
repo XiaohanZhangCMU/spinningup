@@ -22,21 +22,21 @@ def jvp():
 
 def hvp():
     hvp = make_hvp(fun)(a)[0]
-    s = hvp(a)
+    s = hvp(u)
     return s
 
 def hessian1():
     H = hessian(fun)(a)
-    s = np.dot(H, a)
+    s = np.dot(H, u)
     return s
 
-
+# Adapted using the trick: https://j-towns.github.io/2017/06/12/A-new-trick.html
 def torchhvp():
     L = torch.sum(torch.sin(x))
     y, = torch.autograd.grad(L, x, create_graph=True, retain_graph=False)
     w = torch.zeros(y.size(), requires_grad=True)
     g = torch.autograd.grad(y, x, grad_outputs = w, create_graph = True)
-    r = torch.autograd.grad(g, w, grad_outputs = x, create_graph = False)
+    r = torch.autograd.grad(g, w, grad_outputs = v, create_graph = False)
     return r
 
 class net(torch.nn.Module):
@@ -52,18 +52,21 @@ def torchwNet():
     y, = torch.autograd.grad(L, x, create_graph=True, retain_graph=False)
     w = torch.zeros(y.size(), requires_grad=True)
     g = torch.autograd.grad(y, x, grad_outputs = w, create_graph = True)
-    r = torch.autograd.grad(g, w, grad_outputs = x, create_graph = False)
+    r = torch.autograd.grad(g, w, grad_outputs = v, create_graph = False)
     return r
 
 fun = lambda a: np.sum(np.sin(a))
-for size in range(50, 5000, 50):
+for size in range(50, 50000, 50):
     x = torch.randn(size,)
+    v = torch.randn(size,)
     x.requires_grad=True
-    a = x.detach().numpy()
-    #print([timeit.timeit(hvp, number=10),timeit.timeit(hessian1, number=10), timeit.timeit(torchhvp, number=10)])
-    print([timeit.timeit(hvp, number=10), timeit.timeit(torchwNet, number=10)])
 
-print(fun(a))
-print(hvp())
-print(hessian1())
-print(torchhvp())
+    a = x.detach().numpy()
+    u = v.detach().numpy()
+    print([timeit.timeit(hvp, number=10),timeit.timeit(hessian1, number=10), timeit.timeit(torchhvp, number=10), timeit.timeit(torchwNet, number=10)])
+
+#print(fun(a))
+#print(hvp())
+#print(hessian1())
+#print(torchhvp())
+#print(torchwNet())
