@@ -1,3 +1,6 @@
+# Demonstrate:
+# Pearlmutter hvp works for core.mlp
+
 import numpy as np
 import torch
 import gym

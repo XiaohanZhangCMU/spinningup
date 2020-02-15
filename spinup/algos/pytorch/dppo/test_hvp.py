@@ -1,12 +1,16 @@
+# Demonstrate
+# 1. Pearlmutter hvp theory works
+# 2. j-towns 3 backward prop trick works
+
 from autograd import numpy as np
 import autograd.numpy.random as npr
-import timeit
 from autograd.test_util import check_grads, check_equivalent
 from autograd import (grad, elementwise_grad, jacobian, value_and_grad,
                       hessian_tensor_product, hessian, make_hvp,
                       tensor_jacobian_product, checkpoint, make_jvp,
                       make_ggnvp, grad_and_aux)
 import torch
+import timeit
 
 npr.seed(1)
 
