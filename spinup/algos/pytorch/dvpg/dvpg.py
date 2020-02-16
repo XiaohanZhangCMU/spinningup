@@ -87,7 +87,7 @@ class VPGBuffer:
 
 def dvpg(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(),  seed=0,
         steps_per_epoch=4000, epochs=50, gamma=0.99, pi_lr=3e-4,
-        vf_lr=1e-3, train_v_iters=80, lam=0.97, max_ep_len=1000,
+        vf_lr=1e-3, train_v_iters=80, lam=0.97, max_ep_len=1000, epsilon=0.1,
         logger_kwargs=dict(), save_freq=10):
     """
     Vanilla Policy Gradient
@@ -245,7 +245,17 @@ def dvpg(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(),  seed=0,
         # Train policy with a single step of gradient descent
         pi_optimizer.zero_grad()
         loss_pi, pi_info = compute_loss_pi(data)
-        loss_pi.backward()
+
+        # Manually update pi.parameters
+        # loss_pi.backward()
+        for l in ac.pi.logits_net:
+            for x in l.parameters():
+                y, = torch.autograd.grad(loss_pi, x, create_graph=True, retain_graph=True)
+                w = torch.zeros(y.size(), requires_grad=True)
+                g, = torch.autograd.grad(y, x, grad_outputs = w, create_graph = True)
+                r, = torch.autograd.grad(g, w, grad_outputs = y, create_graph = False)
+                x.grad = y - epsilon * r
+
         mpi_avg_grads(ac.pi)    # average grads across MPI processes
         pi_optimizer.step()
 
@@ -332,6 +342,8 @@ if __name__ == '__main__':
     parser.add_argument('--hid', type=int, default=64)
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
+    parser.add_argument('--epsilon', type=float, default=0.1)
+    parser.add_argument('--pi_lr', type=float, default=3e-4)
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--cpu', type=int, default=4)
     parser.add_argument('--steps', type=int, default=4000)
@@ -346,5 +358,4 @@ if __name__ == '__main__':
 
     dvpg(lambda : gym.make(args.env), actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), gamma=args.gamma,
-        seed=args.seed, steps_per_epoch=args.steps, epochs=args.epochs,
-        logger_kwargs=logger_kwargs)
+        seed=args.seed, steps_per_epoch=args.steps, epochs=args.epochs, epsilon=args.epsilon, pi_lr=args.pi_lr, logger_kwargs=logger_kwargs)
