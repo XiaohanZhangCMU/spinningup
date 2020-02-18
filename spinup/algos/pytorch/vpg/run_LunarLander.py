@@ -5,8 +5,8 @@ import torch
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cpu', type=int, default=2)
-    parser.add_argument('--num_runs', type=int, default=10)
+    parser.add_argument('--cpu', type=int, default=8)
+    parser.add_argument('--num_runs', type=int, default=5)
     args = parser.parse_args()
 
     eg = ExperimentGrid(name='vpg_LunarLander-v2')
