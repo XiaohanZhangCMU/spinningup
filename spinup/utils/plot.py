@@ -157,8 +157,8 @@ def make_plots(all_logdirs, legend=None, xaxis=None, values=None, count=False,
     values = values if isinstance(values, list) else [values]
     condition = 'Condition2' if count else 'Condition1'
     estimator = getattr(np, estimator)      # choose what to show on main curve: mean? max? min?
-    plt.figure()
     for value in values:
+        plt.figure()
         plot_data(data, xaxis=xaxis, value=value, condition=condition, smooth=smooth, estimator=estimator)
     plt.show()
 
