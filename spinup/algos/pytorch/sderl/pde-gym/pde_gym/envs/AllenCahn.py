@@ -28,19 +28,22 @@ class AllenCahn(gym.Env):
         self._num_time_interval = num_time_interval
         self._total_time = total_time
 
+        # initialize state variables to keep track of
         self.reset()
 
     def f_tf(self, t, x, y, z):
         return y - np.pow(y, 3)
 
     def g_tf(self, t, x):
-        return 0.5 / (1 + 0.2 * tf.reduce_sum(tf.square(x), 1, keep_dims=True))
+        #return 0.5 / (1 + 0.2 * tf.reduce_sum(tf.square(x), 1, keep_dims=True))
+        return 0.5 / (1 + 0.2 * np.sum(np.square(x), 1, keep_dims=True))
 
     def step(self, z): # z is action
         if self._step_counter > 0:
             self._x[:, :, self._step_counter] = self._x[:, :, self._step_counter-1] + self._sigma * self._dw_sample[:, :, self._step_counter]
 
-            self._y = self._y - self._deta_t * self.f_tf(self._time_stamp, self._x[:,:,self._step_counter], self._y, z) + tf.reduce_sum(z * self._dw[:, :, self._step_counter], 1, keep_dims=True)
+            #self._y = self._y - self._deta_t * self.f_tf(self._time_stamp, self._x[:,:,self._step_counter], self._y, z) + tf.reduce_sum(z * self._dw[:, :, self._step_counter], 1, keep_dims=True)
+            self._y = self._y - self._deta_t * self.f_tf(self._time_stamp, self._x[:,:,self._step_counter], self._y, z) + np.sum(z * self._dw[:, :, self._step_counter], 1, keep_dims=True)
         if self._time_stamp < self._total_time:
             reward = 0
             done = False
