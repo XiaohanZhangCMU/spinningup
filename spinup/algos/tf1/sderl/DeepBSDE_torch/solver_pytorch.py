@@ -89,16 +89,15 @@ class FeedForwardModel(object):
         for t in range(0, self._num_time_interval-1):
             y = y - self._bsde.delta_t * (
                 self._bsde.f_tf(time_stamp[t], x[:, :, t], y, z)
-            ) + tf.reduce_sum(z * dw[:, :, t], 1, keep_dims=True)
+            ) + torch.sum(z * dw[:, :, t], 1, keep_dims=True)
             z = self._subnetwork(x[:, :, t + 1], str(t + 1)) / self._dim
         # terminal time
         y = y - self._bsde.delta_t * self._bsde.f_tf(
             time_stamp[-1], x[:, :, -2], y, z
-        ) + tf.reduce_sum(z * dw[:, :, -1], 1, keep_dims=True)
+        ) + torch.sum(z * dw[:, :, -1], 1, keep_dims=True)
         delta = y - self._bsde.g_tf(self._total_time, self._x[:, :, -1])
         # use linear approximation outside the clipped range
-        loss = tf.reduce_mean(tf.where(tf.abs(delta) < DELTA_CLIP, tf.square(delta),
-                                                 2 * DELTA_CLIP * tf.abs(delta) - DELTA_CLIP ** 2))
+        loss = torch.mean(torch.where(torch.abs(delta) < DELTA_CLIP, torch.pow(delta,2), 2*DELTA_CLIP * torch.abs(delta) - DELTA_CLIP**2))
         self._t_build = time.time()-start_time
 
         return loss
