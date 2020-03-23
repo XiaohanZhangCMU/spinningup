@@ -2,13 +2,10 @@ import logging
 import time
 import numpy as np
 
-#import tensorflow as tf
-#from tensorflow.python.training import moving_averages
-
 import torch
 import torch.nn as nn
+from torch.optim import Adam
 
-TF_DTYPE = tf.float64
 MOMENTUM = 0.99
 EPSILON = 1e-6
 DELTA_CLIP = 50.0
@@ -38,9 +35,9 @@ class FeedForwardModel(object):
         feed_dict_valid = {self._dw: dw_valid, self._x: x_valid, self._is_training: False}
 
         # initialization
-        learning_rate = tf.train.piecewise_constant(global_step,
-                                                self._config.lr_boundaries,
-                                                self._config.lr_values)
+        lr_lambda = lambda epoch: self._config.lr_values[0] if epoch < self._config.lr_boundaries[0] else self._config.lr_values[1]
+        optimizer = torch.optim.Adam([self._y_init, self.z_init]+list(self._subnetwork.parameters()), lr=1)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda) # what is initial learning rate?
 
         # begin sgd iteration
         for step in range(self._config.num_iterations+1):
@@ -56,20 +53,17 @@ class FeedForwardModel(object):
                     logging.info("step: %5u,    loss: %.4e,   Y0: %.4e,  elapsed time %3u" % (
                         step, loss, init, elapsed_time))
 
-
             optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            # optimizer.step()
+            scheduler.step()
 
         return np.array(training_history)
+
 
     def compute_loss(self, dw, x):
         start_time = time.time()
         time_stamp = np.arange(0, self._bsde.num_time_interval) * self._bsde.delta_t
-        self._y_init = tf.Variable(tf.random_uniform([1],
-                                                     minval=self._config.y_init_range[0],
-                                                     maxval=self._config.y_init_range[1],
-                                                     dtype=TF_DTYPE))
         lo = torch.tensor([self._config.y_init_range[0]])
         hi = torch.tensor([self._config.y_init_range[1]])
         self._y_init = torch.distributions.uniform.Uniform(lo, hi, validate_args=None)
