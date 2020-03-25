@@ -1,6 +1,5 @@
 import numpy as np
 
-#import tensorflow as tf
 import torch
 
 from scipy.stats import multivariate_normal as normal
@@ -71,15 +70,13 @@ class AllenCahn(Equation):
         x_sample[:, :, 0] = np.ones([num_sample, self._dim]) * self._x_init
         for i in range(self._num_time_interval):
             x_sample[:, :, i + 1] = x_sample[:, :, i] + self._sigma * dw_sample[:, :, i]
-        return dw_sample, x_sample
+        return torch.as_tensor(dw_sample, dtype=torch.float64), torch.as_tensor(x_sample, dtype=torch.float64)
 
     def f_tf(self, t, x, y, z):
-        #return y - tf.pow(y, 3)
         return y - torch.pow(y, 3)
 
     def g_tf(self, t, x):
-        #return 0.5 / (1 + 0.2 * tf.reduce_sum(tf.square(x), 1, keep_dims=True))
-        return 0.5 / (1 + 0.2 * torch.sum(torch.pow(x,2), 1, keep_dims=True))
+        return 0.5 / (1 + 0.2 * torch.sum(torch.pow(x,2), 1, keepdim=True))
 
 
 class HJB(Equation):
@@ -97,15 +94,14 @@ class HJB(Equation):
         x_sample[:, :, 0] = np.ones([num_sample, self._dim]) * self._x_init
         for i in range(self._num_time_interval):
             x_sample[:, :, i + 1] = x_sample[:, :, i] + self._sigma * dw_sample[:, :, i]
-        return dw_sample, x_sample
+        return torch.as_tensor(dw_sample, dtype=torch.float64), torch.as_tensor(x_sample, dtype=torch.float64)
 
     def f_tf(self, t, x, y, z):
-        #return -self._lambda * tf.reduce_sum(tf.square(z), 1, keep_dims=True)
-        return -self._lambda * torch.sum(torch.pow(z,2), 1, keep_dims=True)
+        tmp = torch.pow(z,2)
+        return -self._lambda * torch.sum(tmp, 1, keepdim=True, dtype=torch.float64)
 
     def g_tf(self, t, x):
-        #return tf.log((1 + tf.reduce_sum(tf.square(x), 1, keep_dims=True)) / 2)
-        return torch.log((1 + torch.sum(torch.pow(x,2), 1, keep_dims=True)) / 2)
+        return torch.log((1 + torch.sum(torch.pow(x,2), 1, keepdim=True, dtype=torch.float64)) / 2)
 
 
 class PricingOption(Equation):
@@ -130,20 +126,15 @@ class PricingOption(Equation):
         factor = np.exp((self._mu_bar-(self._sigma**2)/2)*self._delta_t)
         for i in range(self._num_time_interval):
             x_sample[:, :, i + 1] = (factor * np.exp(self._sigma * dw_sample[:, :, i])) * x_sample[:, :, i]
-        return dw_sample, x_sample
+        return torch.as_tensor(dw_sample, dtype=torch.float64), torch.as_tensor(x_sample, dtype=torch.float64)
 
     def f_tf(self, t, x, y, z):
-        #temp = tf.reduce_sum(z, 1, keep_dims=True) / self._sigma
-        temp = torch.sum(z, 1, keep_dims=True) / self._sigma
-        #return -self._rl * y - (self._mu_bar - self._rl) * temp + (
-        #    (self._rb - self._rl) * tf.maximum(temp - y, 0))
+        temp = torch.sum(z, 1, keepdim=True) / self._sigma
         return -self._rl * y - (self._mu_bar - self._rl) * temp + (
             (self._rb - self._rl) * torch.max(temp - y, 0))
 
     def g_tf(self, t, x):
-        #temp = tf.reduce_max(x, 1, keep_dims=True)
-        temp = torch.max(x, 1, keep_dims=True)
-        #return tf.maximum(temp - 120, 0) - 2 * tf.maximum(temp - 150, 0)
+        temp = torch.max(x, 1, keepdim=True)
         return torch.max(temp - 120, 0) - 2 * torch.max(temp - 150, 0)
 
 
@@ -170,18 +161,15 @@ class PricingDefaultRisk(Equation):
         for i in range(self._num_time_interval):
             x_sample[:, :, i + 1] = (1 + self._mu_bar * self._delta_t) * x_sample[:, :, i] + (
                 self._sigma * x_sample[:, :, i] * dw_sample[:, :, i])
-        return dw_sample, x_sample
+        return torch.as_tensor(dw_sample, dtype=torch.float64), torch.as_tensor(x_sample, dtype=torch.float64)
 
     def f_tf(self, t, x, y, z):
-        #piecewise_linear = tf.nn.relu(
-        #    tf.nn.relu(y - self._vh) * self._slope + self._gammah - self._gammal) + self._gammal
         piecewise_linear = torch.nn.ReLU(
             torch.nn.ReLU(y - self._vh) * self._slope + self._gammah - self._gammal) + self._gammal
         return (-(1 - self._delta) * piecewise_linear - self._rate) * y
 
     def g_tf(self, t, x):
-        #return tf.reduce_min(x, 1, keep_dims=True)
-        return torch.min(x, 1, keep_dims=True)
+        return torch.min(x, 1, keepdim=True)
 
 
 class BurgesType(Equation):
@@ -199,15 +187,13 @@ class BurgesType(Equation):
         x_sample[:, :, 0] = np.ones([num_sample, self._dim]) * self._x_init
         for i in range(self._num_time_interval):
             x_sample[:, :, i + 1] = x_sample[:, :, i] + self._sigma * dw_sample[:, :, i]
-        return dw_sample, x_sample
+        return torch.as_tensor(dw_sample, dtype=torch.float64), torch.as_tensor(x_sample, dtype=torch.float64)
 
     def f_tf(self, t, x, y, z):
-        #return (y - (2 + self._dim) / 2.0 / self._dim) * tf.reduce_sum(z, 1, keep_dims=True)
-        return (y - (2 + self._dim) / 2.0 / self._dim) * torch.sum(z, 1, keep_dims=True)
+        return (y - (2 + self._dim) / 2.0 / self._dim) * torch.sum(z, 1, keepdim=True)
 
     def g_tf(self, t, x):
-        #return 1 - 1.0 / (1 + tf.exp(t + tf.reduce_sum(x, 1, keep_dims=True) / self._dim))
-        return 1 - 1.0 / (1 + torch.exp(t + torch.sum(x, 1, keep_dims=True) / self._dim))
+        return 1 - 1.0 / (1 + torch.exp(t + torch.sum(x, 1, keepdim=True) / self._dim))
 
 
 class QuadraticGradients(Equation):
@@ -226,27 +212,16 @@ class QuadraticGradients(Equation):
         x_sample[:, :, 0] = np.ones([num_sample, self._dim]) * self._x_init
         for i in range(self._num_time_interval):
             x_sample[:, :, i + 1] = x_sample[:, :, i] + dw_sample[:, :, i]
-        return dw_sample, x_sample
+        return torch.as_tensor(dw_sample, dtype=torch.float64), torch.as_tensor(x_sample, dtype=torch.float64)
 
     def f_tf(self, t, x, y, z):
-        #x_square = tf.reduce_sum(tf.square(x), 1, keep_dims=True)
-        x_square = torch.sum(torch.square(x), 1, keep_dims=True)
+        x_square = torch.sum(torch.square(x), 1, keepdim=True)
         base = self._total_time - t + x_square / self._dim
-        #base_alpha = tf.pow(base, self._alpha)
         base_alpha = torch.pow(base, self._alpha)
-        #derivative = self._alpha * tf.pow(base, self._alpha - 1) * tf.cos(base_alpha)
         derivative = self._alpha * torch.pow(base, self._alpha - 1) * torch.cos(base_alpha)
-        #term1 = tf.reduce_sum(tf.square(z), 1, keep_dims=True)
-        term1 = torch.sum(torch.pow(z,2), 1, keep_dims=True)
+        term1 = torch.sum(torch.pow(z,2), 1, keepdim=True)
         term2 = -4.0 * (derivative ** 2) * x_square / (self._dim ** 2)
         term3 = derivative
-        #term4 = -0.5 * (
-        #    2.0 * derivative + 4.0 / (self._dim ** 2) * x_square * self._alpha * (
-        #        (self._alpha - 1) * tf.pow(base, self._alpha - 2) * tf.cos(base_alpha) - (
-        #            self._alpha * tf.pow(base, 2 * self._alpha - 2) * tf.sin(base_alpha)
-        #            )
-        #        )
-        #    )
         term4 = -0.5 * (
             2.0 * derivative + 4.0 / (self._dim ** 2) * x_square * self._alpha * (
                 (self._alpha - 1) * torch.pow(base, self._alpha - 2) * torch.cos(base_alpha) - (
@@ -257,10 +232,8 @@ class QuadraticGradients(Equation):
         return term1 + term2 + term3 + term4
 
     def g_tf(self, t, x):
-        #return tf.sin(
-        #    tf.pow(tf.reduce_sum(tf.square(x), 1, keep_dims=True) / self._dim, self._alpha))
         return torch.sin(
-            torch.pow(torch.sum(torch.pow(x,2), 1, keep_dims=True) / self._dim, self._alpha))
+            torch.pow(torch.sum(torch.pow(x,2), 1, keepdim=True) / self._dim, self._alpha))
 
 
 class ReactionDiffusion(Equation):
@@ -283,16 +256,11 @@ class ReactionDiffusion(Equation):
         return dw_sample, x_sample
 
     def f_tf(self, t, x, y, z):
-        #exp_term = tf.exp((self._lambda ** 2) * self._dim * (t - self._total_time) / 2)
-        #sin_term = tf.sin(self._lambda * tf.reduce_sum(x, 1, keep_dims=True))
-        #temp = y - self._kappa - 1 - sin_term * exp_term
-        #return tf.minimum(tf.constant(1.0, dtype=tf.float64), tf.square(temp))
         exp_term = torch.exp((self._lambda ** 2) * self._dim * (t - self._total_time) / 2)
-        sin_term = torch.sin(self._lambda * torch.sum(x, 1, keep_dims=True))
+        sin_term = torch.sin(self._lambda * torch.sum(x, 1, keepdim=True))
         temp = y - self._kappa - 1 - sin_term * exp_term
         return torch.min(torch.tensor(1.0, dtype=torch.float64), torch.pow(temp,2))
 
     def g_tf(self, t, x):
-        #return 1 + self._kappa + tf.sin(self._lambda * tf.reduce_sum(x, 1, keep_dims=True))
-        return 1 + self._kappa + torch.sin(self._lambda * torch.sum(x, 1, keep_dims=True))
+        return 1 + self._kappa + torch.sin(self._lambda * torch.sum(x, 1, keepdim=True))
 
