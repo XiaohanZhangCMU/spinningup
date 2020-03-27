@@ -10,6 +10,8 @@ MOMENTUM = 0.99
 EPSILON = 1e-6
 DELTA_CLIP = 50.0
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 class Actor(nn.Module):
     def forward(self, obs, act=None):
@@ -43,7 +45,6 @@ class FeedForwardModel(object):
         self.z_init_val = z_init.sample()
         self.z_init_val.requires_grad=True
 
-
     def train(self):
         start_time = time.time()
         # to save iteration results
@@ -54,6 +55,7 @@ class FeedForwardModel(object):
         # initialization
         lr_lambda = lambda epoch: self._config.lr_values[0] if epoch < self._config.lr_boundaries[0] else self._config.lr_values[1]
         ac = self._subnetwork(self._config)
+        print('number of params = ', count_parameters(ac))
         optimizer = torch.optim.Adam([self.y_init_val, self.z_init_val]+list(ac.parameters()), lr=1)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda) # what is initial learning rate?
 
